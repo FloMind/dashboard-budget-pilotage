@@ -1,7 +1,7 @@
 # FloMind — Dashboard Budget Multi-Sites
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://python.org)
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://dashboard-budget-pilotage.streamlit.app/)
 [![Pytest](https://img.shields.io/badge/tests-133%20passed-22c55e)](tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e.svg)](LICENSE)
 
