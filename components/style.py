@@ -323,6 +323,7 @@ textarea:focus {
 }
 .fm-kpi-row-5 { grid-template-columns: repeat(5, 1fr); }
 .fm-kpi-row-4 { grid-template-columns: repeat(4, 1fr); }
+.fm-kpi-row-6 { grid-template-columns: repeat(6, 1fr); }
 .fm-kpi-row-3 { grid-template-columns: repeat(3, 1fr); }
 
 .fm-kpi {

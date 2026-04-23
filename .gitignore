@@ -129,3 +129,6 @@ temp/
 # !.streamlit/config.toml       → configuration UI Streamlit : OK à versionner
 # !requirements.txt             → dépendances : OK à versionner
 # !CHANGELOG.md                 → historique : OK à versionner
+
+# Reforecast CDG — données opérationnelles, ne pas versionner
+data/reforecast.json

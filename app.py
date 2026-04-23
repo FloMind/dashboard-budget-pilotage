@@ -49,6 +49,7 @@ with st.sidebar:
         "Drill-down site"  : "drill",
         "Analyse des ecarts": "ecarts",
         "Rolling Forecast" : "forecast",
+        "Reforecast CDG"   : "reforecast",
         "Guide d'utilisation": "aide",
     }
     ecran = ECRANS[st.radio(
@@ -129,6 +130,9 @@ elif ecran == "ecarts":
     render(data_view)
 elif ecran == "forecast":
     from views.view_forecast import render
+    render(data_view)
+elif ecran == "reforecast":
+    from views.view_reforecast_cdg import render
     render(data_view)
 elif ecran == "aide":
     from views.view_aide import render

@@ -30,6 +30,7 @@ Les PME réseau pilotent encore leur budget sous Excel. Le problème : **Excel d
 - **Drill-down site** — P&L mensuel, courbes budget vs réel, top dérives
 - **Analyse des écarts** — double critère matérialité (% ET €), waterfall mensuel interactif, commentaire CDG
 - **Rolling Forecast** — 4 méthodes (Budget / Tendance / WLS / Hybride), bandes P10–P50–P90 bootstrap, comparaison méthodes
+- **Reforecast CDG** — révision formelle du budget avec hypothèses opérationnelles, persistance JSON, comparaison Budget / Réel / Reforecast / Atterrissage
 - **Guide d'utilisation** — définitions SIG, lecture graphiques, logique alertes
 - **Sélecteur de période** — rejouer le dashboard à n'importe quel mois (Jan → Déc)
 
@@ -65,11 +66,13 @@ dashboard-budget-pilotage/
 │   ├── view_drill_site.py
 │   ├── view_ecarts.py
 │   ├── view_forecast.py
+│   ├── view_reforecast_cdg.py   # Reforecast CDG (saisie + comparaison)
 │   └── view_aide.py             # Guide d'utilisation intégré
 ├── components/
 │   ├── style.py                 # Système de design (CSS, KPI cards HTML, PLOTLY_THEME)
 │   ├── charts.py                # Constructeurs Plotly
 │   └── formatters.py
+├── reforecast_store.py          # Persistance et calculs reforecast (JSON)
 ├── config/settings.py
 ├── .streamlit/config.toml       # Thème Light Pro (sidebar dark, fond clair)
 ├── data/sample_budget_v2.xlsx   # Données démo (96 comptes × 7 sites × 12 mois)
@@ -131,6 +134,7 @@ share.streamlit.io → New app
 - [ ] Commentaires CDG persistants
 - [ ] Comparaison N-1
 - [ ] GitHub Actions CI
+- [x] Reforecast CDG avec persistance JSON
 
 ---
 
