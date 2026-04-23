@@ -1,0 +1,131 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# FloMind Budget Dashboard — .gitignore
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── DONNÉES SENSIBLES (NE JAMAIS VERSIONNER) ──────────────────────────────────
+# Données clients réelles — exclues inconditionnellement
+data/clients/
+data/real/
+data/prod/
+*_client.xlsx
+*_reel.xlsx
+*_production.xlsx
+# Comptes réels anonymisés (scripts d'anonymisation)
+anonymize_comptes.py
+mapping_comptes_*.json
+
+# ── GÉNÉRATEURS (usage interne uniquement) ────────────────────────────────────
+# Les générateurs contiennent les paramètres de calibration spécifiques aux clients
+generators/
+# Sauf le README du dossier
+!generators/README.md
+
+# ── STREAMLIT ─────────────────────────────────────────────────────────────────
+.streamlit/secrets.toml      # Secrets applicatifs (clés API, credentials)
+# Note : .streamlit/config.toml PEUT être versionné (configuration UI)
+
+# ── ENVIRONNEMENTS PYTHON ─────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env/
+# Fichiers .env (variables d'environnement)
+.env
+.env.local
+.env.production
+*.env
+
+# ── CACHE PYTHON ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# ── DISTRIBUTION PYTHON ───────────────────────────────────────────────────────
+dist/
+build/
+eggs/
+*.egg-info/
+*.egg
+.eggs/
+MANIFEST
+
+# ── OUTILS DE TEST ET COVERAGE ────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+nosetests.xml
+
+# ── OUTILS DE QUALITÉ CODE ────────────────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# ── ÉDITEURS ET IDEs ──────────────────────────────────────────────────────────
+# VS Code
+.vscode/
+!.vscode/extensions.json     # Extensions recommandées (OK à versionner)
+# PyCharm / JetBrains
+.idea/
+*.iml
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+# Sublime Text
+*.sublime-workspace
+
+# ── SYSTÈME D'EXPLOITATION ────────────────────────────────────────────────────
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+# Linux
+*~
+.directory
+
+# ── NOTEBOOKS JUPYTER ─────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb          # Décommenter si on ne veut PAS versionner les notebooks
+
+# ── LOGS ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+log/
+
+# ── FICHIERS TEMPORAIRES ──────────────────────────────────────────────────────
+*.tmp
+*.temp
+*.bak
+*.backup
+tmp/
+temp/
+
+# ── DOCUMENTS DE TRAVAIL ──────────────────────────────────────────────────────
+# Fichiers Word/Excel de travail intermédiaire
+~$*.xlsx
+~$*.docx
+*.xlsm           # Fichiers Excel avec macros (potentiellement sensibles)
+
+# ── CE QUI DOIT RESTER DANS LE REPO ──────────────────────────────────────────
+# (Rappel des exceptions importantes)
+# !data/sample_budget_v2.xlsx   → données démo anonymisées : OK à versionner
+# !.streamlit/config.toml       → configuration UI Streamlit : OK à versionner
+# !requirements.txt             → dépendances : OK à versionner
+# !CHANGELOG.md                 → historique : OK à versionner

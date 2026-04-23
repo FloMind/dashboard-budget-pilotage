@@ -1,0 +1,51 @@
+# .streamlit/config.toml
+# FloMind Budget Dashboard — Thème Light Pro
+
+[theme]
+base = "light"
+
+# Couleur principale : bleu FloMind
+primaryColor       = "#2563EB"
+
+# Fonds : blanc et gris très léger
+backgroundColor          = "#F4F7FC"
+secondaryBackgroundColor = "#FFFFFF"
+
+# Texte : bleu nuit profond
+textColor = "#1A2B4A"
+
+font      = "sans serif"
+baseRadius   = "medium"
+buttonRadius = "medium"
+
+borderColor        = "rgba(26,43,74,0.10)"
+showWidgetBorder   = true
+showSidebarBorder  = false
+
+dataframeBorderColor           = "rgba(26,43,74,0.08)"
+dataframeHeaderBackgroundColor = "#EBF0FB"
+
+# Palette sémantique
+greenColor  = "#059669"
+redColor    = "#DC2626"
+blueColor   = "#2563EB"
+orangeColor = "#D97706"
+grayColor   = "#6B7FA3"
+
+# Couleurs catégorielles Plotly
+chartCategoricalColors = [
+    "#94A3B8",
+    "#2563EB",
+    "#D97706",
+    "#059669",
+    "#DC2626",
+    "#7C3AED",
+    "#0891B2",
+]
+
+[theme.sidebar]
+backgroundColor          = "#1A2B4A"
+secondaryBackgroundColor = "#243660"
+textColor                = "#C8D8F0"
+borderColor              = "rgba(255,255,255,0.08)"
+primaryColor             = "#60A5FA"
