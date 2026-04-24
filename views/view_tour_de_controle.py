@@ -173,20 +173,19 @@ def render(data: DashboardData) -> None:
             ),
         ], n_cols=3)
 
-        # rows initialisé avant le if pour éviter UnboundLocalError
-        # (Python considère la variable locale dès qu'elle est assignée n'importe où dans la fonction)
-        rows = []
+        # Variable renommée _alert_rows pour éviter tout conflit de scope
+        _alert_rows = []
         if alertes:
-            for a in alertes[:8]:
-                rows.append({
-                    "Site"   : a.site_code,
-                    "Compte" : a.compte_libelle[:28],
-                    "Écart K€": f"{a.ecart_abs/1000:+.1f}",
-                    "Écart %" : f"{a.ecart_pct:+.1f}%",
-                    "Impact" : sens_label(a.est_favorable),
-                    "P"      : a.priorite,
+            for _a in alertes[:8]:
+                _alert_rows.append({
+                    "Site"   : _a.site_code,
+                    "Compte" : _a.compte_libelle[:28],
+                    "Écart K€": f"{_a.ecart_abs/1000:+.1f}",
+                    "Écart %" : f"{_a.ecart_pct:+.1f}%",
+                    "Impact" : sens_label(_a.est_favorable),
+                    "P"      : _a.priorite,
                 })
-            df_alert = pd.DataFrame(rows)
+            df_alert = pd.DataFrame(_alert_rows)
             st.dataframe(
                 df_alert,
                 use_container_width=True,
