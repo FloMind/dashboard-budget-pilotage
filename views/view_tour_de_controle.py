@@ -5,8 +5,8 @@ views/view_tour_de_controle.py
 Layout :
   Row 1 : KPI strip — CA / Tx Marge Brute / VA / EBE(≈EBITDA) / Att.CA / Att.EBE
            (REX retiré : dotations figées, non actionnable mensuellement)
-  Row 2 : Waterfall YTD consolidé | Alertes réseau
-  Row 3 : Section Valeur Ajoutée
+  Row 2 : Section Valeur Ajoutée (tableau taux VA + bar chart) | Alertes réseau
+  Row 3 : Waterfall décomposition écart YTD (pleine largeur)
   Row 4 : Heatmap EBE multi-sites × mois
   Row 5 : Tableau atterrissage réseau + donut CA + ranking REX
 """
@@ -124,35 +124,98 @@ def render(data: DashboardData) -> None:
 
     st.divider()
 
-    # ── 2. WATERFALL + ALERTES ────────────────────────────────────────────────
-    col_wf, col_alertes = st.columns([3, 2], gap="large")
+    # ── 2. VALEUR AJOUTÉE + ALERTES ──────────────────────────────────────────
+    # VA et alertes montent en position 2 : lecture immédiate de la santé
+    # opérationnelle avant la décomposition analytique de l'écart.
+    col_va_main, col_alertes = st.columns([3, 2], gap="large")
 
-    with col_wf:
-        st.markdown("**Décomposition de l'écart YTD — tous sites**")
+    with col_va_main:
+        section_title("Valeur Ajoutée — analyse réseau")
+        st.caption("VA = MC − Services extérieurs (loyers, honoraires, maintenance…) · richesse produite avant masse salariale")
 
-        # Waterfall consolidé : agrégation YTD toutes classes
-        df_ytd = get_ytd_by_classe(data)   # tous sites
-        # waterfall_chart attend "contribution" — get_ytd_by_classe retourne "ecart"
-        df_ytd["contribution"] = df_ytd["ecart"]
-        total_bgt = float(df_ytd["budget"].sum())
-        total_rel = float(df_ytd["reel"].sum())
+        col_va1, col_va2 = st.columns([2, 3], gap="medium")
 
-        wf_data = {
-            "drivers"    : df_ytd,
-            "total_bgt"  : total_bgt,
-            "total_rel"  : total_rel,
-            "ecart_total": total_rel - total_bgt,
-        }
-        fig_wf = waterfall_chart(wf_data, titre="Budget → Réel YTD (résultat, K€)")
-        st.plotly_chart(fig_wf, use_container_width=True, key="wf_tour")
+        with col_va1:
+            rows_va = []
+            for sc in data.sites:
+                va_r   = float(data.sig_ytd.loc[sc, "VA_rel"])
+                va_b   = float(data.sig_ytd.loc[sc, "VA_bgt"])
+                ca_r   = float(data.sig_ytd.loc[sc, "CA_net_rel"])
+                ca_b   = float(data.sig_ytd.loc[sc, "CA_net_bgt"])
+                tx_r   = (va_r / ca_r * 100) if abs(ca_r) > 1 else 0.0
+                tx_b   = (va_b / ca_b * 100) if abs(ca_b) > 1 else 0.0
+                site_l = data.df_sites.set_index("site_code").loc[sc, "site_libelle"]
+                rows_va.append({
+                    "Site"       : site_l,
+                    "VA K€"      : round(va_r / 1000, 1),
+                    "Tx VA %"    : round(tx_r, 1),
+                    "Bgt Tx VA%" : round(tx_b, 1),
+                    "Δ Tx VA"    : round(tx_r - tx_b, 1),
+                })
+
+            df_va = pd.DataFrame(rows_va).sort_values("Tx VA %", ascending=False)
+
+            def _style_tx(v):
+                if isinstance(v, (int, float)):
+                    return "color:#059669;font-weight:600" if v >= 0 else "color:#DC2626;font-weight:600"
+                return ""
+
+            st.dataframe(
+                df_va.style.map(_style_tx, subset=["Δ Tx VA"]),
+                use_container_width=True, hide_index=True, height=285,
+                column_config={
+                    "VA K€"      : st.column_config.NumberColumn(format="%.1f"),
+                    "Tx VA %"    : st.column_config.NumberColumn("Tx VA % réel",   format="%.1f"),
+                    "Bgt Tx VA%" : st.column_config.NumberColumn("Tx VA % budget", format="%.1f"),
+                    "Δ Tx VA"    : st.column_config.NumberColumn("Δ (pts)",        format="%.1f"),
+                },
+            )
+
+        with col_va2:
+            import plotly.graph_objects as go
+            sites_l = [data.df_sites.set_index("site_code").loc[sc, "site_libelle"] for sc in data.sites]
+            tx_va_r = [float(data.sig_ytd.loc[sc, "VA_rel"]) / float(data.sig_ytd.loc[sc, "CA_net_rel"]) * 100
+                       if abs(float(data.sig_ytd.loc[sc, "CA_net_rel"])) > 1 else 0 for sc in data.sites]
+            tx_va_b = [float(data.sig_ytd.loc[sc, "VA_bgt"]) / float(data.sig_ytd.loc[sc, "CA_net_bgt"]) * 100
+                       if abs(float(data.sig_ytd.loc[sc, "CA_net_bgt"])) > 1 else 0 for sc in data.sites]
+
+            order   = sorted(range(len(tx_va_r)), key=lambda i: tx_va_r[i], reverse=True)
+            sites_s = [sites_l[i] for i in order]
+            tx_r_s  = [tx_va_r[i] for i in order]
+            tx_b_s  = [tx_va_b[i] for i in order]
+
+            from components.style import C, PLOTLY_THEME
+            fig_va = go.Figure()
+            fig_va.add_trace(go.Bar(
+                name="Budget", x=sites_s, y=tx_b_s,
+                marker_color=C["slate"], opacity=0.5,
+                hovertemplate="%{x}<br>Budget : <b>%{y:.1f}%</b><extra></extra>",
+            ))
+            fig_va.add_trace(go.Bar(
+                name="Réel", x=sites_s, y=tx_r_s,
+                marker_color=C["green"],
+                hovertemplate="%{x}<br>Réel : <b>%{y:.1f}%</b><extra></extra>",
+            ))
+            fig_va.update_layout(
+                **PLOTLY_THEME,
+                title_text="Taux de VA % CA — réel vs budget",
+                barmode="group", height=280,
+                yaxis_ticksuffix="%",
+            )
+            st.plotly_chart(fig_va, use_container_width=True, key="va_chart")
 
     with col_alertes:
-        alertes = compute_alertes(data)
+        # Cache session_state : compute_alertes est O(n_lignes) — recalcul évité
+        # sur chaque rerender Streamlit (navigation, interactions UI).
+        # Clé = (mois_reel, annee) : invalide automatiquement si le slider change.
+        _alert_key = f"_alertes_{data.mois_reel}_{data.annee}"
+        if _alert_key not in st.session_state:
+            st.session_state[_alert_key] = compute_alertes(data)
+        alertes = st.session_state[_alert_key]
         resume  = summary_alertes(alertes)
 
         section_title("Alertes réseau")
 
-        # Compteurs alertes — 3 cartes compactes
         kpi_row([
             kpi_card(
                 label     = "CRITIQUES",
@@ -173,26 +236,23 @@ def render(data: DashboardData) -> None:
             ),
         ], n_cols=3)
 
-        # Variable renommée _alert_rows pour éviter tout conflit de scope
         _alert_rows = []
         if alertes:
             for _a in alertes[:8]:
                 _alert_rows.append({
-                    "Site"   : _a.site_code,
-                    "Compte" : _a.compte_libelle[:28],
+                    "Site"    : _a.site_code,
+                    "Compte"  : _a.compte_libelle[:28],
                     "Écart K€": f"{_a.ecart_abs/1000:+.1f}",
-                    "Écart %" : f"{_a.ecart_pct:+.1f}%",
-                    "Impact" : sens_label(_a.est_favorable),
-                    "P"      : _a.priorite,
+                    "Écart %": f"{_a.ecart_pct:+.1f}%",
+                    "Impact"  : sens_label(_a.est_favorable),
+                    "P"       : _a.priorite,
                 })
             df_alert = pd.DataFrame(_alert_rows)
             st.dataframe(
                 df_alert,
-                use_container_width=True,
-                hide_index=True,
-                height=280,
+                use_container_width=True, hide_index=True, height=280,
                 column_config={
-                    "P": st.column_config.NumberColumn("Prio", format="%d"),
+                    "P"       : st.column_config.NumberColumn("Prio", format="%d"),
                     "Écart K€": st.column_config.TextColumn("Écart K€"),
                 },
             )
@@ -201,83 +261,24 @@ def render(data: DashboardData) -> None:
 
     st.divider()
 
-    # ── 3. VALEUR AJOUTÉE ────────────────────────────────────────────────────
-    section_title("Valeur Ajoutée — analyse réseau")
-    st.caption("VA = MC − Services extérieurs (loyers, honoraires, maintenance…) · mesure la richesse produite avant masse salariale")
+    # ── 3. WATERFALL — DÉCOMPOSITION DE L'ÉCART ──────────────────────────────
+    # Descend en position 3 : lecture analytique après le diagnostic opérationnel.
+    section_title("Décomposition de l'écart YTD — tous sites")
+    st.caption("Budget → Réel : contribution de chaque classe PCG à l'écart de résultat")
 
-    col_va1, col_va2 = st.columns([2, 3], gap="large")
+    df_ytd = get_ytd_by_classe(data)
+    df_ytd["contribution"] = df_ytd["ecart"]
+    total_bgt = float(df_ytd["budget"].sum())
+    total_rel = float(df_ytd["reel"].sum())
 
-    with col_va1:
-        # Taux VA par site
-        rows_va = []
-        for sc in data.sites:
-            va_r  = float(data.sig_ytd.loc[sc, "VA_rel"])
-            va_b  = float(data.sig_ytd.loc[sc, "VA_bgt"])
-            ca_r  = float(data.sig_ytd.loc[sc, "CA_net_rel"])
-            ca_b  = float(data.sig_ytd.loc[sc, "CA_net_bgt"])
-            tx_r  = (va_r / ca_r * 100) if abs(ca_r) > 1 else 0.0
-            tx_b  = (va_b / ca_b * 100) if abs(ca_b) > 1 else 0.0
-            site_l = data.df_sites.set_index("site_code").loc[sc, "site_libelle"]
-            rows_va.append({
-                "Site"       : site_l,
-                "VA K€"      : round(va_r / 1000, 1),
-                "Tx VA %"    : round(tx_r, 1),
-                "Bgt Tx VA%" : round(tx_b, 1),
-                "Δ Tx VA"    : round(tx_r - tx_b, 1),
-            })
-
-        # pd déjà importé en tête de fichier (ligne 15) — import local supprimé
-        df_va = pd.DataFrame(rows_va).sort_values("Tx VA %", ascending=False)
-
-        def _style_tx(v):
-            if isinstance(v, (int, float)):
-                return "color:#059669;font-weight:600" if v >= 0 else "color:#DC2626;font-weight:600"
-            return ""
-
-        st.dataframe(
-            df_va.style.map(_style_tx, subset=["Δ Tx VA"]),
-            use_container_width=True, hide_index=True, height=285,
-            column_config={
-                "VA K€"      : st.column_config.NumberColumn(format="%.1f"),
-                "Tx VA %"    : st.column_config.NumberColumn("Tx VA % réel",   format="%.1f"),
-                "Bgt Tx VA%" : st.column_config.NumberColumn("Tx VA % budget", format="%.1f"),
-                "Δ Tx VA"    : st.column_config.NumberColumn("Δ (pts)",        format="%.1f"),
-            },
-        )
-
-    with col_va2:
-        import plotly.graph_objects as go
-        sites_l  = [data.df_sites.set_index("site_code").loc[sc, "site_libelle"] for sc in data.sites]
-        tx_va_r  = [float(data.sig_ytd.loc[sc, "VA_rel"]) / float(data.sig_ytd.loc[sc, "CA_net_rel"]) * 100
-                    if abs(float(data.sig_ytd.loc[sc, "CA_net_rel"])) > 1 else 0 for sc in data.sites]
-        tx_va_b  = [float(data.sig_ytd.loc[sc, "VA_bgt"]) / float(data.sig_ytd.loc[sc, "CA_net_bgt"]) * 100
-                    if abs(float(data.sig_ytd.loc[sc, "CA_net_bgt"])) > 1 else 0 for sc in data.sites]
-
-        # Trier par taux VA réel décroissant
-        order = sorted(range(len(tx_va_r)), key=lambda i: tx_va_r[i], reverse=True)
-        sites_s = [sites_l[i] for i in order]
-        tx_r_s  = [tx_va_r[i] for i in order]
-        tx_b_s  = [tx_va_b[i] for i in order]
-
-        from components.style import C, PLOTLY_THEME
-        fig_va = go.Figure()
-        fig_va.add_trace(go.Bar(
-            name="Budget", x=sites_s, y=tx_b_s,
-            marker_color=C["slate"], opacity=0.5,
-            hovertemplate="%{x}<br>Budget : <b>%{y:.1f}%</b><extra></extra>",
-        ))
-        fig_va.add_trace(go.Bar(
-            name="Réel", x=sites_s, y=tx_r_s,
-            marker_color=C["green"],
-            hovertemplate="%{x}<br>Réel : <b>%{y:.1f}%</b><extra></extra>",
-        ))
-        fig_va.update_layout(
-            **PLOTLY_THEME,
-            title_text="Taux de VA % CA — réel vs budget",
-            barmode="group", height=280,
-            yaxis_ticksuffix="%",
-        )
-        st.plotly_chart(fig_va, use_container_width=True, key="va_chart")
+    wf_data = {
+        "drivers"    : df_ytd,
+        "total_bgt"  : total_bgt,
+        "total_rel"  : total_rel,
+        "ecart_total": total_rel - total_bgt,
+    }
+    fig_wf = waterfall_chart(wf_data, titre="Budget → Réel YTD (résultat, K€)")
+    st.plotly_chart(fig_wf, use_container_width=True, key="wf_tour")
 
     st.divider()
 
@@ -313,7 +314,12 @@ def render(data: DashboardData) -> None:
     # ── 4. TABLEAU ATTERRISSAGE RÉSEAU ────────────────────────────────────────
     section_title("Atterrissages fin d'exercice — Réseau complet")
 
-    att_df = compute_atterrissage_groupe(data)
+    # Cache session_state : compute_atterrissage_groupe calcule 8 atterrissages
+    # (7 sites + consolidé) — inutile de le recalculer à chaque rerender.
+    _att_key = f"_atterrissage_{data.mois_reel}_{data.annee}"
+    if _att_key not in st.session_state:
+        st.session_state[_att_key] = compute_atterrissage_groupe(data)
+    att_df = st.session_state[_att_key]
 
     # Mise en forme lisible
     display = pd.DataFrame({
