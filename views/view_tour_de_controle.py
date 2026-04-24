@@ -226,7 +226,7 @@ def render(data: DashboardData) -> None:
                 "Δ Tx VA"    : round(tx_r - tx_b, 1),
             })
 
-        import pandas as pd
+        # pd déjà importé en tête de fichier (ligne 15) — import local supprimé
         df_va = pd.DataFrame(rows_va).sort_values("Tx VA %", ascending=False)
 
         def _style_tx(v):
