@@ -173,8 +173,10 @@ def render(data: DashboardData) -> None:
             ),
         ], n_cols=3)
 
+        # rows initialisé avant le if pour éviter UnboundLocalError
+        # (Python considère la variable locale dès qu'elle est assignée n'importe où dans la fonction)
+        rows = []
         if alertes:
-            rows = []
             for a in alertes[:8]:
                 rows.append({
                     "Site"   : a.site_code,
