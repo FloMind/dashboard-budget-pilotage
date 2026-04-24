@@ -132,3 +132,4 @@ temp/
 
 # Reforecast CDG — données opérationnelles, ne pas versionner
 data/reforecast.json
+data/hypotheses.json
