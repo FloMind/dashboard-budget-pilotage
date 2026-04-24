@@ -3,10 +3,12 @@ views/view_tour_de_controle.py
 Écran 1 — Tour de contrôle réseau (vue DG)
 
 Layout :
-  Row 1 : KPI strip (CA / EBE / REX / Atterrissage)
+  Row 1 : KPI strip — CA / Tx Marge Brute / VA / EBE(≈EBITDA) / Att.CA / Att.EBE
+           (REX retiré : dotations figées, non actionnable mensuellement)
   Row 2 : Waterfall YTD consolidé | Alertes réseau
-  Row 3 : Heatmap EBE multi-sites × mois
-  Row 4 : Tableau atterrissage réseau
+  Row 3 : Section Valeur Ajoutée
+  Row 4 : Heatmap EBE multi-sites × mois
+  Row 5 : Tableau atterrissage réseau + donut CA + ranking REX
 """
 from __future__ import annotations
 import streamlit as st
@@ -43,11 +45,17 @@ def render(data: DashboardData) -> None:
     )
 
     # ── 1. KPI STRIP ─────────────────────────────────────────────────────────
+    # Ordre cascade SIG : CA → Tx Marge Brute → VA → EBE(≈EBITDA) → Att. CA → Att. EBE
+    # REX retiré : dotations figées, non actionnable en pilotage mensuel.
+    # Taux de marge brute entré : 1er levier actionnable par le directeur de site.
     kpi     = compute_kpi_strip(data)
     att_ebe = kpi.ebe_atterrissage
     bgt_ebe = float(data.sig_annuel.loc[:, "EBE"].sum())
     ecart_att_ca  = kpi.ca_atterrissage - kpi.ca_annuel_bgt
     ecart_att_ebe = att_ebe - bgt_ebe
+
+    # Taux de marge brute (MC/CA) — différence en points vs budget
+    delta_mc_pt = kpi.tx_mc_reel - kpi.tx_mc_budget
 
     # VA YTD — calculé directement depuis sig_ytd
     va_ytd_reel = float(data.sig_ytd["VA_rel"].sum())
@@ -58,6 +66,7 @@ def render(data: DashboardData) -> None:
     tx_va_bgt   = (va_ytd_bgt  / ca_ytd_bgt  * 100) if abs(ca_ytd_bgt)  > 1 else 0.0
 
     kpi_row([
+        # 1 — CA : le volume d'activité
         kpi_card(
             label     = "CA YTD RÉEL",
             value     = fmt_ke(kpi.ca_ytd_reel),
@@ -66,6 +75,34 @@ def render(data: DashboardData) -> None:
             favorable = kpi.ca_ecart_pct >= 0,
             color     = "blue",
         ),
+        # 2 — Taux de marge brute : achète-t-on bien ? (1er levier site)
+        kpi_card(
+            label     = "TAUX MARGE BRUTE",
+            value     = fmt_pct(kpi.tx_mc_reel, force_sign=False),
+            delta     = f"{delta_mc_pt:+.1f} pt vs budget",
+            sub       = f"Budget : {fmt_pct(kpi.tx_mc_budget, force_sign=False)} · MC {fmt_ke(kpi.mc_ytd_reel)}",
+            favorable = delta_mc_pt >= 0,
+            color     = "green",
+        ),
+        # 3 — VA : richesse produite avant masse salariale (utile banque / Codir)
+        kpi_card(
+            label     = "VA YTD RÉEL",
+            value     = fmt_ke(va_ytd_reel),
+            delta     = f"{tx_va_reel:.1f}% du CA",
+            sub       = f"Budget : {fmt_ke(va_ytd_bgt)} · {tx_va_bgt:.1f}% CA",
+            favorable = va_ytd_reel >= va_ytd_bgt,
+            color     = "purple",
+        ),
+        # 4 — EBE (≈ EBITDA) : performance opérationnelle — l'indicateur central
+        kpi_card(
+            label     = "EBE YTD (≈ EBITDA)",
+            value     = fmt_ke(kpi.ebe_ytd_reel),
+            delta     = f"{kpi.tx_ebe_reel:.1f}% CA · {kpi.ebe_ytd_reel - kpi.ebe_ytd_budget:+.0f}€ vs bgt",
+            sub       = f"Budget : {fmt_ke(kpi.ebe_ytd_budget)}",
+            favorable = kpi.ebe_ytd_reel >= kpi.ebe_ytd_budget,
+            color     = "amber",
+        ),
+        # 5 — Atterrissage CA : va-t-on tenir l'objectif annuel ?
         kpi_card(
             label     = "ATTERRISSAGE CA",
             value     = fmt_ke(kpi.ca_atterrissage),
@@ -74,22 +111,7 @@ def render(data: DashboardData) -> None:
             favorable = ecart_att_ca >= 0,
             color     = "cyan",
         ),
-        kpi_card(
-            label     = "EBE YTD RÉEL",
-            value     = fmt_ke(kpi.ebe_ytd_reel),
-            delta     = f"{kpi.tx_ebe_reel:.1f}% CA · {kpi.ebe_ytd_reel - kpi.ebe_ytd_budget:+.0f}€ vs bgt",
-            sub       = f"Budget : {fmt_ke(kpi.ebe_ytd_budget)}",
-            favorable = kpi.ebe_ytd_reel >= kpi.ebe_ytd_budget,
-            color     = "amber",
-        ),
-        kpi_card(
-            label     = "REX YTD RÉEL",
-            value     = fmt_ke(kpi.rex_ytd_reel),
-            delta     = f"{kpi.tx_rex_reel:.1f}% CA",
-            sub       = f"Budget : {fmt_ke(kpi.rex_ytd_budget)}",
-            favorable = kpi.rex_ytd_reel >= 0,
-            color     = "purple",
-        ),
+        # 6 — Atterrissage EBE : sera-t-on rentable en décembre ?
         kpi_card(
             label     = "ATTERRISSAGE EBE",
             value     = fmt_ke(att_ebe),
@@ -97,14 +119,6 @@ def render(data: DashboardData) -> None:
             sub       = f"Budget annuel : {fmt_ke(bgt_ebe)}",
             favorable = ecart_att_ebe >= 0,
             color     = "cyan",
-        ),
-        kpi_card(
-            label     = "VA YTD RÉEL",
-            value     = fmt_ke(va_ytd_reel),
-            delta     = f"{tx_va_reel:.1f}% du CA",
-            sub       = f"Budget : {fmt_ke(va_ytd_bgt)} · {tx_va_bgt:.1f}% CA",
-            favorable = va_ytd_reel >= va_ytd_bgt,
-            color     = "green",
         ),
     ], n_cols=6)
 
@@ -133,13 +147,7 @@ def render(data: DashboardData) -> None:
         st.plotly_chart(fig_wf, use_container_width=True, key="wf_tour")
 
     with col_alertes:
-        # Cache session_state : compute_alertes est O(n_lignes) — recalcul évité
-        # sur chaque rerender Streamlit (navigation, interactions UI).
-        # Clé = (mois_reel, annee) : invalide automatiquement si le slider change.
-        _alert_key = f"_alertes_{data.mois_reel}_{data.annee}"
-        if _alert_key not in st.session_state:
-            st.session_state[_alert_key] = compute_alertes(data)
-        alertes = st.session_state[_alert_key]
+        alertes = compute_alertes(data)
         resume  = summary_alertes(alertes)
 
         section_title("Alertes réseau")
@@ -217,7 +225,7 @@ def render(data: DashboardData) -> None:
                 "Δ Tx VA"    : round(tx_r - tx_b, 1),
             })
 
-        # pandas déjà importé en tête de fichier — import local supprimé (B2)
+        import pandas as pd
         df_va = pd.DataFrame(rows_va).sort_values("Tx VA %", ascending=False)
 
         def _style_tx(v):
@@ -304,12 +312,7 @@ def render(data: DashboardData) -> None:
     # ── 4. TABLEAU ATTERRISSAGE RÉSEAU ────────────────────────────────────────
     section_title("Atterrissages fin d'exercice — Réseau complet")
 
-    # Cache session_state : compute_atterrissage_groupe calcule 8 atterrissages
-    # (7 sites + consolidé) — inutile de le recalculer à chaque rerender.
-    _att_key = f"_atterrissage_{data.mois_reel}_{data.annee}"
-    if _att_key not in st.session_state:
-        st.session_state[_att_key] = compute_atterrissage_groupe(data)
-    att_df = st.session_state[_att_key]
+    att_df = compute_atterrissage_groupe(data)
 
     # Mise en forme lisible
     display = pd.DataFrame({
