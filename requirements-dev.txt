@@ -1,0 +1,21 @@
+# FloMind Budget Dashboard — Dépendances développement uniquement
+# Usage : pip install -r requirements-dev.txt
+# À NE PAS inclure dans les déploiements Streamlit Cloud (requirements.txt seul).
+# Compatible Python 3.10+
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+pytest==8.3.0              # Framework de tests unitaires
+pytest-cov==6.0.0          # Coverage de tests
+
+# ── Formatage et qualité ──────────────────────────────────────────────────────
+black==24.10.0             # Formatage automatique du code
+ruff==0.8.0                # Linter ultra-rapide (remplace flake8 + isort)
+
+# ── Analyse statique ──────────────────────────────────────────────────────────
+mypy==1.13.0               # Vérification des types
+# pandas-stubs : pas de version épinglée — la 2.2.3.240807 exige Python >=3.11
+# pip résoudra automatiquement la dernière version compatible Python 3.10
+pandas-stubs
+
+# ── Outils divers ─────────────────────────────────────────────────────────────
+ipykernel==6.29.5          # Jupyter pour exploration des données

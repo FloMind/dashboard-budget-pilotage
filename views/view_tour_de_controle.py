@@ -133,7 +133,13 @@ def render(data: DashboardData) -> None:
         st.plotly_chart(fig_wf, use_container_width=True, key="wf_tour")
 
     with col_alertes:
-        alertes = compute_alertes(data)
+        # Cache session_state : compute_alertes est O(n_lignes) — recalcul évité
+        # sur chaque rerender Streamlit (navigation, interactions UI).
+        # Clé = (mois_reel, annee) : invalide automatiquement si le slider change.
+        _alert_key = f"_alertes_{data.mois_reel}_{data.annee}"
+        if _alert_key not in st.session_state:
+            st.session_state[_alert_key] = compute_alertes(data)
+        alertes = st.session_state[_alert_key]
         resume  = summary_alertes(alertes)
 
         section_title("Alertes réseau")
@@ -211,7 +217,7 @@ def render(data: DashboardData) -> None:
                 "Δ Tx VA"    : round(tx_r - tx_b, 1),
             })
 
-        import pandas as pd
+        # pandas déjà importé en tête de fichier — import local supprimé (B2)
         df_va = pd.DataFrame(rows_va).sort_values("Tx VA %", ascending=False)
 
         def _style_tx(v):
@@ -298,7 +304,12 @@ def render(data: DashboardData) -> None:
     # ── 4. TABLEAU ATTERRISSAGE RÉSEAU ────────────────────────────────────────
     section_title("Atterrissages fin d'exercice — Réseau complet")
 
-    att_df = compute_atterrissage_groupe(data)
+    # Cache session_state : compute_atterrissage_groupe calcule 8 atterrissages
+    # (7 sites + consolidé) — inutile de le recalculer à chaque rerender.
+    _att_key = f"_atterrissage_{data.mois_reel}_{data.annee}"
+    if _att_key not in st.session_state:
+        st.session_state[_att_key] = compute_atterrissage_groupe(data)
+    att_df = st.session_state[_att_key]
 
     # Mise en forme lisible
     display = pd.DataFrame({

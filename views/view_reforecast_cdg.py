@@ -183,7 +183,7 @@ def render(data: DashboardData) -> None:
     for i, m in enumerate(range(1, 13)):
         is_realise = m <= data.mois_reel
         bgt = budget_m[i] / 1000
-        rel = (reel_m[i] / 1000) if (not is_realise is False and reel_m[i] is not None) else None
+        rel = (reel_m[i] / 1000) if (is_realise and reel_m[i] is not None) else None  # B3: simplifié
         rfc_val = float(rfc_saved.get(str(m), budget_m[i])) / 1000 if not is_realise else None
 
         rows.append({

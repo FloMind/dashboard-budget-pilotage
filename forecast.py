@@ -478,7 +478,7 @@ def _compute_bands_bootstrap(
     mois_reel     : int,
     n_sim         : int = N_BOOTSTRAP,
     seed          : int = BOOTSTRAP_SEED,
-) -> Tuple[np.ndarray, np.ndarray, float, float]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float, float, float]:
     """
     Estime les bandes P10/P90 via bootstrap sur les résidus historiques.
 
@@ -671,7 +671,10 @@ def rolling_forecast(
     )
 
     # Exercice complet (n_restants=0) : P10=P50=P90=réel (pas d'incertitude)
-    if total_p10 == 0.0 and total_p50 == 0.0 and total_p90 == 0.0:
+    # Guard sur len(p50_m)==0 (condition structurelle réelle) et non sur les
+    # valeurs numériques, pour éviter d'écraser un forecast EBE/REX légitimement
+    # égal à 0€ (ex. site exactement à l'équilibre).
+    if len(p50_m) == 0:
         total_p10 = total_fc
         total_p50 = total_fc
         total_p90 = total_fc

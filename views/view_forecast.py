@@ -200,9 +200,18 @@ def render(data: DashboardData) -> None:
         df_fore = multi[multi["is_forecast"]].copy()
 
         # Tableau comparatif : atterrissage annuel par méthode
+        # Cache session_state : 4 × rolling_forecast(n_sim=200) = ~800 simulations
+        # évitées à chaque rerender. Clé = (site, kpi, mois_reel).
+        _comp_key = f"_fc_comp_{site_code}_{kpi}_{data.mois_reel}_{data.annee}"
+        if _comp_key not in st.session_state:
+            st.session_state[_comp_key] = {
+                m: rolling_forecast(data, site_code, kpi, m, n_sim=200)
+                for m in _METHODE_INFO.keys()
+            }
+        results_comp = st.session_state[_comp_key]
+
         totaux = []
-        for m in _METHODE_INFO.keys():
-            r_m = rolling_forecast(data, site_code, kpi, m, n_sim=200)
+        for m, r_m in results_comp.items():
             totaux.append({
                 "Méthode"   : _METHODE_INFO[m],
                 "Forecast"  : fmt_ke(r_m.total_forecast),
